@@ -1,32 +1,52 @@
-# `@ubiquity/ts-template`
+# Pull Request Work Time Estimator
 
-This template repository includes support for the following:
+A CLI tool to estimate the active hours spent on a GitHub pull request. This tool fetches the commits associated with a specified pull request and calculates the active hours based on commit activity, rounding to the nearest half-hour interval.
 
-- TypeScript
-- Environment Variables
-- Conventional Commits
-- Automatic deployment to Cloudflare Pages
+## Prerequisites
 
-## Testing
+- Node.js
+- yarn
 
-### Cypress
+## Installation
 
-To test with Cypress Studio UI, run
+1. Clone the repository:
 
-```shell
-yarn cy:open
+   ```sh
+   git clone https://github.com/0x4007/pull-time-estimator.git
+   cd pull-time-estimator
+   ```
+
+2. Install the dependencies:
+
+   ```sh
+   yarn install
+   ```
+
+3. Create a `.env` file in the root directory and add your GitHub token:
+   ```
+   GITHUB_TOKEN=your_github_token
+   ```
+
+## Usage
+
+```sh
+npx tsx build -u <GitHub Pull Request URL>
 ```
 
-Otherwise to simply run the tests through the console, run
+### Example
 
-```shell
-yarn cy:run
+```sh
+npx tsx build -u https://github.com/ubiquibot/command-query-user/pull/6
 ```
 
-### Jest
+### Options
 
-To start Jest tests, run
+- `-u, --url <url>`: GitHub pull request URL (required)
 
-```shell
-yarn test
-```
+## How It Works
+
+1. **Fetch Commits**: The tool fetches all commits associated with the specified pull request.
+2. **Calculate Time Differences**: It calculates the time differences between consecutive commits.
+3. **Clustering**: Using the DBSCAN algorithm, it clusters the commit activities based on time differences.
+4. **Calculate Active Hours**: It sums up the time spent on each cluster and converts it into hours.
+5. **Round to Nearest Half-Hour**: The total active hours are rounded to the nearest half-hour interval.
