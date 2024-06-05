@@ -58,12 +58,19 @@ async function fetchCommits(org: string, repo: string, pull: number): Promise<Co
 }
 
 function calculateActiveHours(commitData: Commit[]): number {
+  if (commitData.length === 0) {
+    console.error("No commits found.");
+    return 0;
+  }
+
   const sortedCommits = commitData.map((commit) => ({ ...commit, date: moment(commit.date) })).sort((a, b) => a.date.valueOf() - b.date.valueOf());
 
   const timeDiffsSeconds = sortedCommits.map((commit, index) => {
     if (index === 0) return 0;
     return sortedCommits[index].date.diff(sortedCommits[index - 1].date, "seconds");
   });
+
+  console.log("Time differences in seconds:", timeDiffsSeconds);
 
   const dbscan = new DBSCAN();
   const clusters = dbscan.run(
@@ -72,23 +79,28 @@ function calculateActiveHours(commitData: Commit[]): number {
     1
   );
 
+  console.log("Clusters:", clusters);
+
   const clusteredTimes = clusters.map((cluster) => cluster.reduce((sum, index) => sum + timeDiffsSeconds[index], 0));
 
-  const filteredClusterTimes = clusteredTimes.filter((time) => time > 1800);
+  console.log("Clustered times:", clusteredTimes);
 
-  const totalActiveTimeSeconds = filteredClusterTimes.reduce((sum, time) => sum + time, 0);
-  return totalActiveTimeSeconds / 3600;
+  const totalActiveTimeSeconds = clusteredTimes.reduce((sum, time) => sum + time, 0);
+  const totalActiveHours = totalActiveTimeSeconds / 3600;
+
+  // Round to the nearest half hour
+  return Math.round(totalActiveHours * 2) / 2;
 }
 
-async function main(): Promise<void> {
+export async function main(): Promise<void> {
   try {
     const { org, repo, pull } = parseGitHubUrl(url);
+    console.log(`Fetching commits for ${org}/${repo}#${pull}`);
     const commits = await fetchCommits(org, repo, pull);
+    console.log(`Fetched ${commits.length} commits.`);
     const activeHours = calculateActiveHours(commits);
     console.log(`Total active hours: ${activeHours.toFixed(2)}`);
   } catch (error) {
     console.error("Error fetching commits or calculating active hours:", error);
   }
 }
-
-void main();
