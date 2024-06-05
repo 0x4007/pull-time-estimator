@@ -10,18 +10,14 @@ dotenv.config();
 
 const program = new Command();
 
-program
-  .option("-o, --org <org>", "GitHub organization")
-  .option("-r, --repo <repo>", "GitHub repository")
-  .option("-p, --pull <pull>", "Pull request number")
-  .parse(process.argv);
+program.option("-u, --url <url>", "GitHub pull request URL").parse(process.argv);
 
 const options = program.opts();
 
-const { org, repo, pull } = options;
+const { url } = options;
 
-if (!org || !repo || !pull) {
-  console.error("Organization, repository, and pull request number are required.");
+if (!url) {
+  console.error("GitHub pull request URL is required.");
   process.exit(1);
 }
 
@@ -39,14 +35,22 @@ interface Commit {
   date: string;
 }
 
+function parseGitHubUrl(pullUrl: string): { org: string; repo: string; pull: number } {
+  const match = pullUrl.match(/https:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
+  if (!match) {
+    throw new Error("Invalid GitHub pull request URL.");
+  }
+  return { org: match[1], repo: match[2], pull: parseInt(match[3], 10) };
+}
+
 async function fetchCommits(org: string, repo: string, pull: number): Promise<Commit[]> {
-  const url = `https://api.github.com/repos/${org}/${repo}/pulls/${pull}/commits`;
+  const apiUrl = `https://api.github.com/repos/${org}/${repo}/pulls/${pull}/commits`;
   const headers = {
     Authorization: `token ${GITHUB_TOKEN}`,
     Accept: "application/vnd.github.v3+json",
   };
 
-  const response = await axios.get<GitHubCommit[]>(url, { headers });
+  const response = await axios.get<GitHubCommit[]>(apiUrl, { headers });
   return response.data.map((commit: GitHubCommit) => ({
     sha: commit.sha,
     date: commit.commit.author?.date || "",
@@ -78,6 +82,7 @@ function calculateActiveHours(commitData: Commit[]): number {
 
 async function main(): Promise<void> {
   try {
+    const { org, repo, pull } = parseGitHubUrl(url);
     const commits = await fetchCommits(org, repo, pull);
     const activeHours = calculateActiveHours(commits);
     console.log(`Total active hours: ${activeHours.toFixed(2)}`);
